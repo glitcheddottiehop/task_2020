@@ -5,74 +5,95 @@ include 'Connection.php';
 // Turn off all error reporting
 error_reporting(0);
 
+/**
+ * Class CSVAggregator
+ * 
+ * Inserts data from given CSV files to database
+ */
 class CSVAggregator extends Connection 
 {
+     /**
+     * Fetch CSV files
+     * 
+     * @return string
+     */
     public function getFiles()
     {
-        $dir    = '../data';
+        $dir    = '../test_data';
         $files = scandir($dir);
-        $refactoredList = [];
 
         foreach ($files as $file){
             if (strpos($file, '.csv') !== false) {
-                $refactoredList[] = $file;
+                  $this->CSVToArray($file);
             }
         }
-        return $this->CSVToArray($refactoredList);
+
+        $host = "http://$_SERVER[HTTP_HOST]";
+        $link = '<a target="_blank" href= "' . $host . '/classes/CustomerInformation.php">HERE</a>';
+        return "<br>Data processed! Check inserted data: $link";
     }
 
-    public function CSVToArray($list)
+    /**
+     * Refactor each file's data into array type
+     */
+    public function CSVToArray($CSVfile)
     {
-        foreach ($list as $item) {
-            $file ="../data/$item";
-            $csv = file_get_contents($file);
-            $array = array_map("str_getcsv", explode("\n", $csv));
-            $json = json_encode($array);
-
-            $datas = [];
-            $column_names = [];
+        $file ="../test_data/$CSVfile";
+        $csv = file_get_contents($file);
+        $array = array_map("str_getcsv", explode("\n", $csv));
+        $datas = [];
+        $column_names = [];
+        $data = '';  
+        foreach ($array[0] as $single_csv) {
+            $column_names[] = $single_csv;
+        }
+        foreach ($array as $key => $csv) {
+            if ($key === 0) {
+                continue;
+            }   
+            foreach ($column_names as $column_key => $column_name) {
+                $datas[$key][$column_name] = $csv[$column_key]; 
+            }
+        }
+        foreach($datas as $entry) {
+            $columns = array_keys($entry);  
             $data = '';  
+            $columnName = '';
 
-            foreach ($array[0] as $single_csv) {
-                $column_names[] = $single_csv;
-            }
-
-            foreach ($array as $key => $csv) {
-                if ($key === 0) {
-                    continue;
-                }   
-                foreach ($column_names as $column_key => $column_name) {
-                    $datas[$key][$column_name] = $csv[$column_key]; 
-                }
-            }
-            foreach($datas as $entry) {
-                $columns = array_keys($entry);    
-                $columnName = '';
-                foreach($columns as $column){
-                    $columnName .= $column . ', ';    
+            foreach($columns as $column){
+                $columnName .= $column . ', ';
+                if ($entry[$column] == '') {
+                    $entry[$column] = "NULL";
+                    $data .= $entry[$column] . ", ";
+                }else {
                     $data .= "'" . $entry[$column] . "', ";
                 }
-                $formatValues = substr($data, 0, -2) . ')';
-
-                return $this->createSQL($columnName, $formatValues);
             }
+            $formatValues = substr($data, 0, -2) . ')';
+            $this->createSQL($columnName, $formatValues);
         }
     }
 
+    /**
+     * Create executable SQL
+     */
     public function createSQL($columns, $values)
     {
         $sql = "";
         $sql = "INSERT INTO customer_information (" . substr($columns, 0, strpos($columns, ',', -2)) .  ") VALUES ($values";
-        return $this->insert($sql);
+        $this->insert($sql);
     }
 
+    /**
+     * Insert data into databse
+     */
     public function insert($sql)
     {
-
-        //TODO return all id's of inserted rows
-
-        // return $this->connect()->query("INSERT INTO customer_information (name, surname, email, address, city, gender, soc_security_num,balance) VALUES ('', '', '', '', '', '', '', '')");
-        $this->connect()->query($sql);
+        $stmt = $this->connect();
+        if (!$stmt->query($sql)) { 
+            print_r($stmt->errorInfo());
+        }
+        // $stmt->rowCount();
         // return $this->pdo->errorCode();
         // return $this->pdo->lastInsertId();
         // ->execute() returns true on success. 
