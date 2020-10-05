@@ -19,7 +19,7 @@ class CSVAggregator extends Connection
      */
     public function getFiles()
     {
-        $dir    = '../test_data';
+        $dir    = '../data';
         $files = scandir($dir);
 
         foreach ($files as $file){
@@ -38,7 +38,7 @@ class CSVAggregator extends Connection
      */
     public function CSVToArray($CSVfile)
     {
-        $file ="../test_data/$CSVfile";
+        $file ="../data/$CSVfile";
         $csv = file_get_contents($file);
         $array = array_map("str_getcsv", explode("\n", $csv));
         $datas = [];
